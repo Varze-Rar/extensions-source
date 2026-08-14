@@ -11,9 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout fork
-        uses: actions/checkout@v4
-
       - name: Checkout upstream Keiyoushi
         uses: actions/checkout@v4
         with:
@@ -21,12 +18,54 @@ jobs:
           path: upstream
           fetch-depth: 1
 
-      - name: Check upstream DESU
+      - name: Check DESU source
+        working-directory: upstream
         run: |
           set -euo pipefail
-          test -f upstream/src/ru/desu/build.gradle.kts
+
+          test -f src/ru/desu/build.gradle.kts
+
           grep -q 'id = 6684416167758830305L' \
-            upstream/src/ru/desu/build.gradle.kts
+            src/ru/desu/build.gradle.kts
+
+          echo "DESU source found"
+
+      - name: Check new DESU API
+        run: |
+          set -euo pipefail
+
+          curl -fsSL \
+            "https://desu.uno/api/manga/4581" \
+            -o manga.json
+
+          curl -fsSL \
+            "https://desu.uno/api/manga/4581/chapters" \
+            -o chapters.json
+
+          curl -fsSL \
+            "https://desu.uno/api/manga/4581/chapters/691269" \
+            -o chapter.json
+
+          grep -q '"manga"' manga.json
+          grep -q '"chapters"' chapters.json
+          grep -q '"chapter"' chapter.json
+
+          echo "New DESU API is responding"
+
+      - name: Apply DESU patch
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+
+          python3 ../patch_desu.py
+
+          grep -q 'const val PREFIX_SLUG_SEARCH' \
+            src/ru/desu/src/eu/kanade/tachiyomi/extension/ru/desu/Desu.kt
+
+          grep -q '"/api/manga"' \
+            src/ru/desu/src/eu/kanade/tachiyomi/extension/ru/desu/Desu.kt
+
+          echo "DESU patch applied"
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -35,6 +74,18 @@ jobs:
           java-version: '17'
 
       - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build DESU
+        working-directory: upstream
+        run: ./gradlew :src:ru:desu:assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: desu-api-fix
+          path: upstream/src/ru/desu/build/outputs/apk/debug/*.apk
+          if-no-files-found: error      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build DESU
