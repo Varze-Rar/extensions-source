@@ -85,16 +85,4 @@ jobs:
         with:
           name: desu-api-fix
           path: upstream/src/ru/desu/build/outputs/apk/debug/*.apk
-          if-no-files-found: error      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build DESU
-        working-directory: upstream
-        run: ./gradlew :src:ru:desu:assembleDebug --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: desu-api-fix
-          path: upstream/src/ru/desu/build/outputs/apk/debug/*.apk
           if-no-files-found: error
