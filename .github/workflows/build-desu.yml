@@ -1,0 +1,49 @@
+name: Build DESU API Fix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream Keiyoushi
+        uses: actions/checkout@v4
+        with:
+          repository: keiyoushi/extensions-source
+          path: upstream
+          fetch-depth: 1
+
+      - name: Check upstream DESU
+        run: |
+          set -euo pipefail
+          test -f upstream/src/ru/desu/build.gradle.kts
+          grep -q 'id = 6684416167758830305L' \
+            upstream/src/ru/desu/build.gradle.kts
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build DESU
+        working-directory: upstream
+        run: ./gradlew :src:ru:desu:assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: desu-api-fix
+          path: upstream/src/ru/desu/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
